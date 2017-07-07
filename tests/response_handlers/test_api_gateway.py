@@ -67,7 +67,7 @@ class TestApiGateway:
             result['headers'], equal_to({
                 'Access-Control-Allow-Origin': '*',
                 'Vary': 'Accept-Encoding',
-                'Content-Length': 29,
+                'Content-Length': 121,
                 'Content-Encoding': 'gzip'
             })
         )
