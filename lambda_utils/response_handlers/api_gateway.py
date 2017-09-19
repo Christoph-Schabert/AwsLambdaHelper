@@ -1,5 +1,7 @@
 from lambda_utils.response_handlers import BaseResponseHandler
 from concurrent.futures import TimeoutError
+from cStringIO import StringIO
+import gzip
 import json
 try:
     from urllib.parse import parse_qs
@@ -8,8 +10,15 @@ except ImportError:
 
 
 class ApiGateway(BaseResponseHandler):
+    gzip_response = None
+    event = []
+
+    def __init__(self, gzip_response=True):
+        self.gzip_response = gzip_response
+
     def on_execution(self, event):
         event['body'] = extract_body(event)
+        self.event = event
         return event
 
     def on_exception(self, ex):
@@ -17,6 +26,30 @@ class ApiGateway(BaseResponseHandler):
             return http_response("Execution is about to timeout.", status=504)
         else:
             return http_response('Internal Server Error', status=500)
+
+    def on_response(self, response):
+        response = self._gzip_if_possible(response)
+
+        return response
+
+    def _gzip_if_possible(self, response):
+        accecpted_encoding = self.event.get('headers', {}).get('Accept-Encoding', '')
+        if 'gzip' not in accecpted_encoding.lower():
+            return response
+
+        if response['statusCode'] < 200 or response['statusCode'] >= 300 or 'Content-Encoding' in response['headers']:
+            return response
+
+        gzip_buffer = StringIO()
+        gzip_file = gzip.GzipFile(mode='wb', fileobj=gzip_buffer)
+        gzip_file.write(response.get('body'))
+        gzip_file.close()
+
+        response['body'] = gzip_buffer.getvalue()
+        response['headers']['Content-Encoding'] = 'gzip'
+        response['headers']['Vary'] = 'Accept-Encoding'
+        response['headers']['Content-Length'] = len(response['body'])
+        return response
 
 
 def http_response(body, status=200, headers=None):

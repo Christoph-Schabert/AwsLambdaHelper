@@ -1,8 +1,10 @@
-from hamcrest import equal_to, assert_that, has_entry
-from mock import patch
-from lambda_utils.response_handlers import api_gateway as module
-from lambda_utils.response_handlers.api_gateway import ApiGateway, extract_body, http_response, json_http_response, redirect_to
 from concurrent.futures import TimeoutError
+from hamcrest import assert_that, equal_to, has_entry, less_than
+from mock import patch
+
+from lambda_utils.response_handlers import api_gateway as module
+from lambda_utils.response_handlers.api_gateway import ApiGateway, extract_body, http_response, \
+    json_http_response, redirect_to
 
 
 class TestApiGateway:
@@ -26,6 +28,49 @@ class TestApiGateway:
 
         assert_that(result['statusCode'], equal_to(500))
         assert_that(result['body'], equal_to('Internal Server Error'))
+
+    def test_on_response_returns_uncompressed_response_unsupported_request(self):
+        response = http_response('something')
+        api_gateway = ApiGateway()
+        api_gateway.event = {'headers': {'Accept-Encoding': 'deflate, br'}}
+
+        result = api_gateway.on_response(response)
+
+        assert_that(result, equal_to(response))
+
+    def test_on_response_returns_uncompressed_response_unsupported_status_code(self):
+        response = http_response('something', status=301)
+        api_gateway = ApiGateway()
+        api_gateway.event = {'headers': {'Accept-Encoding': 'gzip, deflate, br'}}
+
+        result = api_gateway.on_response(response)
+
+        assert_that(result, equal_to(response))
+
+    def test_on_response_returns_compressed_response(self):
+        body = """{
+            "city": "Munich",
+            "country_code": "DE",
+            "country_name": "Germany",
+            "latitude": 48.15,
+            "longitude": 11.5833,
+            "postal_code": "80798"
+        }"""
+        response = http_response(str(body))
+        api_gateway = ApiGateway()
+        api_gateway.event = {'headers': {'Accept-Encoding': 'gzip, deflate, br'}}
+
+        result = api_gateway.on_response(response)
+
+        assert_that(len(result['body']), less_than(len(body)))
+        assert_that(
+            result['headers'], equal_to({
+                'Access-Control-Allow-Origin': '*',
+                'Vary': 'Accept-Encoding',
+                'Content-Length': 121,
+                'Content-Encoding': 'gzip'
+            })
+        )
 
 
 class TestExtractBody:
