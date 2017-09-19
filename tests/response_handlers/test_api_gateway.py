@@ -1,8 +1,10 @@
-from hamcrest import equal_to, assert_that, has_entry
-from mock import patch
-from lambda_utils.response_handlers import api_gateway as module
-from lambda_utils.response_handlers.api_gateway import ApiGateway, extract_body, http_response, json_http_response, redirect_to
 from concurrent.futures import TimeoutError
+from hamcrest import assert_that, equal_to, has_entry
+from mock import patch
+
+from lambda_utils.response_handlers import api_gateway as module
+from lambda_utils.response_handlers.api_gateway import ApiGateway, extract_body, http_response, \
+    json_http_response, logging, redirect_to
 
 
 class TestApiGateway:
@@ -26,6 +28,14 @@ class TestApiGateway:
 
         assert_that(result['statusCode'], equal_to(500))
         assert_that(result['body'], equal_to('Internal Server Error'))
+
+    @patch.object(logging, 'exception')
+    def test_on_exception_calls_logging_exception(self, exception_mock):
+        ex = Exception()
+
+        ApiGateway().on_exception(ex=ex)
+
+        exception_mock.assert_called_once_with(str(ex))
 
 
 class TestExtractBody:

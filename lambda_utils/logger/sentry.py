@@ -1,10 +1,12 @@
-import os
 import logging
-from . import BaseLogger
+import os
+
 from raven import Client
+from raven.conf import setup_logging
 from raven.handlers.logging import SentryHandler
 from raven.transport.requests import RequestsHTTPTransport
-from raven.conf import setup_logging
+
+from . import BaseLogger
 
 
 class Sentry(BaseLogger):

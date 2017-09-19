@@ -20,8 +20,8 @@ class Cloudformation(BaseResponseHandler):
         return BaseResponseHandler.on_execution(self, event)
 
     def on_exception(self, ex):
+        logging.exception(str(ex))
         send_signal(self.event, FAILED, str(ex))
-        BaseResponseHandler.on_exception(self, ex)
 
 
 def send_signal(event, response_status, reason, response_data=None):

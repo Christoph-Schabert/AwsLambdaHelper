@@ -1,10 +1,12 @@
 import logging
-import pytest
 from time import sleep
-from mock import patch, MagicMock
+
+import pytest
 from hamcrest import assert_that, equal_to
+from mock import MagicMock, patch
 from pytest import fixture
-from lambda_utils import LambdaProcessor, BaseResponseHandler
+
+from lambda_utils import BaseResponseHandler, LambdaProcessor
 from tests.conftest import Context
 
 
@@ -122,6 +124,7 @@ class TestOnFunctions:
             function(None, None)
 
         assert_that(ex.value, equal_to(exception))
+        exception_mock.assert_called_once_with(str(exception))
 
     @patch.object(BaseResponseHandler, 'on_exception')
     def test_on_exception_forward_exception(self, on_exception_mock, exception):
@@ -143,11 +146,3 @@ class TestSecondsUntilTimeout:
         result = LambdaProcessor().seconds_until_timeout(context)
 
         assert_that(result, equal_to(4.0))
-
-    @patch.object(logging, 'debug')
-    def test_returns_none(self, debug_mock):
-
-        result = LambdaProcessor().seconds_until_timeout(None)
-
-        assert_that(result, equal_to(None))
-        debug_mock.assert_called_once_with('Add logging on timeout failed. context.get_remaining_time_in_millis() missing?')
